@@ -102,6 +102,8 @@ static void parseFlakeInputAttr(EvalState & state, const Attr & attr, fetchers::
     case nBool:
         attrs.emplace(state.symbols[attr.name], Explicit<bool>{attr.value->boolean()});
         break;
+    case nNull:
+        break;
     case nInt: {
         auto intValue = attr.value->integer().value;
         if (intValue < 0)
@@ -152,9 +154,10 @@ static FlakeInput parseFlakeInput(
         try {
             if (attr.name == sUrl) {
                 forceTrivialValue(state, *attr.value, pos);
-                if (attr.value->type() == nString)
+                if (attr.value->type() == nString) {
                     url = attr.value->string_view();
-                else if (attr.value->type() == nPath) {
+                    attrs.emplace("url", *url);
+                } else if (attr.value->type() == nPath) {
                     auto path = attr.value->path();
                     if (path.accessor != flakeDir.accessor)
                         throw Error(
@@ -163,12 +166,14 @@ static FlakeInput parseFlakeInput(
                             state.positions[attr.pos],
                             flakeDir);
                     url = "path:" + flakeDir.path.makeRelative(path.path);
+                    attrs.emplace("url", *url);
+                } else if (attr.value->type() == nNull) {
+                    // ...
                 } else
                     throw Error(
                         "expected a string or a path but got %s at %s",
                         showType(attr.value->type()),
                         state.positions[attr.pos]);
-                attrs.emplace("url", *url);
             } else if (attr.name == sFlake) {
                 expectType(state, nBool, *attr.value, attr.pos);
                 input.isFlake = attr.value->boolean();
