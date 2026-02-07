@@ -75,6 +75,14 @@ static void forceTrivialValue(EvalState & state, Value & value, const PosIdx pos
         state.forceValue(value, pos);
 }
 
+static void expectOptionalType(EvalState & state, ValueType type, Value & value, const PosIdx pos)
+{
+    forceTrivialValue(state, value, pos);
+    auto valType = value.type();
+    if (valType != nNull && valType != type)
+        throw Error("expected %s but got %s at %s", showType(type), showType(valType), state.positions[pos]);
+}
+
 static void expectType(EvalState & state, ValueType type, Value & value, const PosIdx pos)
 {
     forceTrivialValue(state, value, pos);
@@ -136,7 +144,7 @@ static FlakeInput parseFlakeInput(
     const InputAttrPath & lockRootAttrPath,
     const SourcePath & flakeDir)
 {
-    expectType(state, nAttrs, *value, pos);
+    expectOptionalType(state, nAttrs, *value, pos);
 
     FlakeInput input;
 
@@ -221,7 +229,7 @@ static std::pair<std::map<FlakeId, FlakeInput>, fetchers::Attrs> parseFlakeInput
     std::map<FlakeId, FlakeInput> inputs;
     fetchers::Attrs selfAttrs;
 
-    expectType(state, nAttrs, *value, pos);
+    expectOptionalType(state, nAttrs, *value, pos);
 
     for (auto & inputAttr : *value->attrs()) {
         auto inputName = state.symbols[inputAttr.name];
